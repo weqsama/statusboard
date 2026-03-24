@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import db from './database';
+import axios from 'axios';
 
 const router = Router();
 
@@ -27,12 +28,12 @@ router.delete('/services/:id', (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
-// Get ping history for a service
+// Get ping history for a service (return newest 100, frontend will order oldest->newest)
 router.get('/services/:id/pings', (req: Request, res: Response) => {
   const pings = db.prepare(`
     SELECT * FROM pings
     WHERE service_id = ?
-    ORDER BY checked_at ASC
+    ORDER BY checked_at DESC
     LIMIT 100
   `).all(req.params.id);
   res.json(pings);
@@ -54,3 +55,49 @@ router.get('/status', (req: Request, res: Response) => {
 });
 
 export default router;
+
+// manually trigger a ping for debugging/testing purposes
+router.post('/services/:id/ping', async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const service = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+  if (!service) return res.status(404).json({ error: 'Service not found' });
+
+  const start = Date.now();
+  let status = 'down';
+  let responseTime: number | null = null;
+
+  try {
+    await axios.get(service.url, { timeout: 5000 });
+    status = 'up';
+    responseTime = Date.now() - start;
+  } catch {
+    responseTime = Date.now() - start;
+  }
+
+  const info = db.prepare(`
+    INSERT INTO pings (service_id, status, response_time)
+    VALUES (?, ?, ?)
+  `).run(id, status, responseTime);
+
+  const inserted = db.prepare(`
+    SELECT id, service_id, status, response_time, checked_at
+    FROM pings
+    WHERE id = ?
+  `).get(info.lastInsertRowid);
+
+  const payload = {
+    id: service.id,
+    name: service.name,
+    url: service.url,
+    status: inserted.status,
+    response_time: inserted.response_time,
+    checked_at: inserted.checked_at,
+    ping_id: inserted.id
+  };
+
+  // Emit via Socket.IO if attached to app
+  const io = req.app.get('io');
+  if (io && typeof io.emit === 'function') io.emit('statusUpdate', payload);
+
+  res.json(inserted);
+});

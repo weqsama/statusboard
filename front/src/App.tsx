@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import {
   ResponsiveContainer,
   LineChart,
@@ -30,7 +31,13 @@ interface Ping {
 }
 
 function formatTime(dateStr: string) {
-  const date = new Date(dateStr + ' UTC');
+  if (!dateStr) return '';
+
+  // time parsing attempt
+  const looksLikeIso = /T|Z|\+|UTC/.test(dateStr);
+  const normalized = looksLikeIso ? dateStr : `${dateStr} UTC`;
+  const date = new Date(normalized);
+  if (isNaN(date.getTime())) return dateStr;
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
@@ -48,13 +55,54 @@ function App() {
 
   const fetchPings = async (id: number) => {
     const res = await axios.get(`${API}/services/${id}/pings`);
-    setPings(prev => ({ ...prev, [id]: res.data }));
+    // API returns newest first; reverse to oldest->newest for chart rendering
+    const ordered = Array.isArray(res.data) ? res.data.slice().reverse() : res.data;
+    setPings(prev => ({ ...prev, [id]: ordered }));
   };
 
   useEffect(() => {
     fetchStatus();
     const interval = setInterval(fetchStatus, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Realtime updates via Socket.IO
+  useEffect(() => {
+    const socket = io('http://localhost:3001');
+
+    socket.on('statusUpdate', (payload: any) => {
+      // Update services list
+      setServices(prev => prev.map(s => s.id === payload.id ? {
+        ...s,
+        status: payload.status,
+        response_time: payload.response_time,
+        checked_at: payload.checked_at
+      } : s));
+
+      // Append to pings for the service so newest datapoint is on the right.
+      // Use DB-provided ping id when available to keep frontend in sync with persisted rows
+      setPings(prev => {
+        const existing = prev[payload.id] || [];
+        const newPing = {
+          id: payload.ping_id || Date.now(),
+          service_id: payload.id,
+          status: payload.status,
+          response_time: payload.response_time,
+          checked_at: payload.checked_at
+        };
+
+        // Avoid duplicates: if the last entry already has this id, skip appending
+        if (existing.length > 0 && existing[existing.length - 1].id === newPing.id) {
+          return prev;
+        }
+
+        const combined = [...existing, newPing];
+        const sliced = combined.slice(-100);
+        return { ...prev, [payload.id]: sliced };
+      });
+    });
+
+    return () => { socket.disconnect(); };
   }, []);
 
   const handleCardClick = (id: number) => {
