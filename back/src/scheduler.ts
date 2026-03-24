@@ -20,18 +20,26 @@ export function startScheduler(io?: SocketIOServer) {
         responseTime = Date.now() - start;
       }
 
-      db.prepare(`
+      const info = db.prepare(`
         INSERT INTO pings (service_id, status, response_time)
         VALUES (?, ?, ?)
       `).run(service.id, status, responseTime);
+
+      // Read back the inserted row so we have the DB's actual `id` and `checked_at` values
+      const inserted = db.prepare(`
+        SELECT id, service_id, status, response_time, checked_at
+        FROM pings
+        WHERE id = ?
+      `).get(info.lastInsertRowid);
 
       const payload = {
         id: service.id,
         name: service.name,
         url: service.url,
-        status,
-        response_time: responseTime,
-        checked_at: new Date().toISOString()
+        status: inserted.status,
+        response_time: inserted.response_time,
+        checked_at: inserted.checked_at,
+        ping_id: inserted.id
       };
 
       if (io) {
