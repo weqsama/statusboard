@@ -24,7 +24,8 @@ cd back
 npm install
 npx ts-node src/index.ts
 ```
-the backend will start on port 3001, feel free to change the port if it causes conflicts (line 8 of index.ts)
+this will install all backend dependencies for you, same with frontend in the next step
+the backend will start on port 3001, currently hardcoded but I will add support to change ports if you'd like. (Or you could fork and do it for me bc I'm so busy and burdened)
 
 ### 3. Set up frontend
 
