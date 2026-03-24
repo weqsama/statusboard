@@ -19,6 +19,9 @@ initDb();
 const httpServer = createServer(app);
 const io = new SocketIOServer(httpServer, { cors: { origin: '*' } });
 
+// make io available to routes via app.get('io')
+app.set('io', io);
+
 startScheduler(io);
 
 httpServer.listen(PORT, () => {

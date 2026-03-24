@@ -46,7 +46,7 @@ export function startScheduler(io?: SocketIOServer) {
         io.emit('statusUpdate', payload);
       }
 
-      console.log(`[${service.name}] ${status} — ${responseTime}ms`);
+      console.log(`[${service.name}] ${status} — ${responseTime}ms (ping id=${inserted.id} checked_at=${inserted.checked_at})`);
     }
   });
 }
