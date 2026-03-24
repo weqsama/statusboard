@@ -48,7 +48,6 @@ function App() {
 
   const fetchPings = async (id: number) => {
     const res = await axios.get(`${API}/services/${id}/pings`);
-    console.log(res.data);
     setPings(prev => ({ ...prev, [id]: res.data }));
   };
 
