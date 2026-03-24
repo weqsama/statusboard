@@ -148,7 +148,7 @@ function App() {
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={pings[service.id]}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="checked_at" tickFormatter={formatTime} tick={{ fontSize: 11 }} reversed />
+                    <XAxis dataKey="checked_at" tickFormatter={formatTime} tick={{ fontSize: 11 }} />
                     <YAxis unit="ms" tick={{ fontSize: 11 }} />
                     <Tooltip
                       formatter={(value: any) => [`${value}ms`, 'Response Time']}
