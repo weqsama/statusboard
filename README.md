@@ -1,6 +1,6 @@
 # Status Monitor Dashboard
 
-Honestly I got tired of having to jump across status pages to view uptimes of services I use. I created a full stack app (React, Node, Express, TS, & SQLite) to house everything in one place. You can download this repo and do the same. Currently pings each service added to your list once a minute (websocket implementation coming soon) to check uptime. This is my first solo dedicated project so be nice or die.
+Honestly I got tired of having to jump across status pages to view uptimes of services I use. I created a full stack app (React, Node, Express, TS, & SQLite) to house everything in one place. You can download this repo and do the same. Currently pings each service added to your list once a minute and uses websockets to update the dashboard. 
 
 ## Pre-reqs
 
@@ -15,7 +15,17 @@ git clone
 cd statusboard
 ```
 
-### 2. Set up backend
+### 2. Create Data Directory
+
+In your terminal in the statusboard directory:
+
+```
+mkdir data
+```
+
+This is so you have somewhere to put your data (duh) without it the project breaks rn bc I'm too lazy to add error handling for it.
+
+### 3. Set up backend
 
 In your terminal:
 
@@ -27,7 +37,7 @@ npx ts-node src/index.ts
 this will install all backend dependencies for you, same with frontend in the next step
 the backend will start on port 3001, currently hardcoded but I will add support to change ports if you'd like. (Or you could fork and do it for me bc I'm so busy and burdened)
 
-### 3. Set up frontend
+### 4. Set up frontend
 
 Open a separate terminal:
 
