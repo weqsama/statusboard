@@ -32,7 +32,7 @@ router.get('/services/:id/pings', (req: Request, res: Response) => {
   const pings = db.prepare(`
     SELECT * FROM pings
     WHERE service_id = ?
-    ORDER BY checked_at DESC
+    ORDER BY checked_at ASC
     LIMIT 100
   `).all(req.params.id);
   res.json(pings);
