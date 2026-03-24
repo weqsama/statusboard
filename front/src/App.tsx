@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import {
   ResponsiveContainer,
   LineChart,
@@ -30,7 +31,13 @@ interface Ping {
 }
 
 function formatTime(dateStr: string) {
-  const date = new Date(dateStr + ' UTC');
+  if (!dateStr) return '';
+
+  // time parsing attempt
+  const looksLikeIso = /T|Z|\+|UTC/.test(dateStr);
+  const normalized = looksLikeIso ? dateStr : `${dateStr} UTC`;
+  const date = new Date(normalized);
+  if (isNaN(date.getTime())) return dateStr;
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
@@ -55,6 +62,39 @@ function App() {
     fetchStatus();
     const interval = setInterval(fetchStatus, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Realtime updates via Socket.IO
+  useEffect(() => {
+    const socket = io('http://localhost:3001');
+
+    socket.on('statusUpdate', (payload: any) => {
+      // Update services list
+      setServices(prev => prev.map(s => s.id === payload.id ? {
+        ...s,
+        status: payload.status,
+        response_time: payload.response_time,
+        checked_at: payload.checked_at
+      } : s));
+
+      // Append to pings for expanded service so newest datapoint is on the right.
+      setPings(prev => {
+        const existing = prev[payload.id] || [];
+        const newPing = {
+          id: Date.now(),
+          service_id: payload.id,
+          status: payload.status,
+          response_time: payload.response_time,
+          checked_at: payload.checked_at
+        };
+        const combined = [...existing, newPing];
+        // Keep only the last 100 entries (oldest first, newest last)
+        const sliced = combined.slice(-100);
+        return { ...prev, [payload.id]: sliced };
+      });
+    });
+
+    return () => { socket.disconnect(); };
   }, []);
 
   const handleCardClick = (id: number) => {

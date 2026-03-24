@@ -3,6 +3,8 @@ import cors from 'cors';
 import { initDb } from './database';
 import { startScheduler } from './scheduler';
 import router from './routes';
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 
 const app = express();
 const PORT = 3001;
@@ -12,8 +14,13 @@ app.use(express.json());
 app.use('/api', router);
 
 initDb();
-startScheduler();
 
-app.listen(PORT, () => {
+// Create HTTP server and attach Socket.IO so scheduler can emit events
+const httpServer = createServer(app);
+const io = new SocketIOServer(httpServer, { cors: { origin: '*' } });
+
+startScheduler(io);
+
+httpServer.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });
